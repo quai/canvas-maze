@@ -1,0 +1,161 @@
+<html>
+    <head>
+        <title>Maze?</title>
+        <style type="text/css">
+        body, canvas {
+            height:100%;
+            width:100%;
+            margin:0;
+            padding:0;
+        }
+        </style>
+    </head>
+    <body>
+
+        <canvas></canvas>
+
+        <script>
+
+const cellSize = 10;
+
+const sizeX = document.body.clientWidth;
+const sizeY = document.body.clientHeight;
+
+const numLinesX = Math.floor(sizeX/cellSize) - 1;
+const numLinesY = Math.floor(sizeY/cellSize) - 1;
+
+const cellsX = numLinesX-1;
+const cellsY = numLinesY-1;
+
+let ctx;
+let cells = [];
+
+function setupBoard() {
+    ctx = document.getElementsByTagName('canvas')[0].getContext('2d');
+    ctx.canvas.setAttribute('width', sizeX);
+    ctx.canvas.setAttribute('height', sizeY);
+    ctx.strokeStyle = 'rgb(0,0,0)';
+    ctx.lineWidth = 2;
+
+    ctx.fillStyle = 'rgb(128, 128, 128)';
+    ctx.fillRect(0,0,sizeX,sizeY);
+
+    ctx.beginPath();
+    for(var x=0; x<numLinesX; x++) {
+        ctx.moveTo((x*cellSize)+cellSize, cellSize);
+        ctx.lineTo((x*cellSize)+cellSize, numLinesY*cellSize );
+    }
+    for(var y=0; y<numLinesY; y++) {
+        ctx.moveTo(cellSize, (y*cellSize+cellSize));
+        ctx.lineTo(numLinesX*cellSize, (y*cellSize)+cellSize);
+    }
+    ctx.stroke();
+
+    for (let x=0;x<cellsX;x++) {
+        cells[x] = [];
+        for (let y=0;y<cellsY;y++) {
+            cells[x][y]=0;
+        }
+    }
+}
+
+function getCellPixelPosition(x,y) {
+    return [cellSize + ( x*cellSize ) + 1, cellSize + ( y*cellSize ) + 1];
+}
+
+function joinCells(x,y,x2,y2) {
+
+    // this function expects the given cells to be neighbors,
+    // and will not do any limit check on the cells.
+
+    let c1 = getCellPixelPosition(x,y);
+    let c2 = getCellPixelPosition(x2,y2)
+
+    ctx.save()
+    ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.fillRect(
+            Math.min(c1[0], c2[0]), Math.min(c1[1],c2[1]),
+            ( Math.abs(c1[0]-c2[0]) > 0 ) ? (cellSize*2)-2 : cellSize-2,
+            ( Math.abs(c1[1]-c2[1]) > 0 ) ? (cellSize*2)-2 : cellSize-2,
+        );
+    ctx.restore();
+}
+
+function getValidNextCell(x,y) {
+    let nextCells = new Array();
+
+    // Check each direction for cells that has not been visited.
+    // up, right, down, left
+    if ( (y-1 >= 0)     && cells[x][y-1] === 0 ) { nextCells.push( [x,y-1] ); }
+    if ( (x+1 < cellsX) && cells[x+1][y] === 0 ) { nextCells.push( [x+1,y] ); }
+    if ( (y+1 < cellsY) && cells[x][y+1] === 0 ) { nextCells.push( [x,y+1] ); }
+    if ( (x-1 >= 0)     && cells[x-1][y] === 0 ) { nextCells.push( [x-1,y] ); }
+
+    // Return the valid next-cells in random order
+    return nextCells.length ? nextCells[ Math.floor(Math.random() * nextCells.length) ] : null;
+}
+
+function recursiveBuildMaze(x,y) {
+    // Mark current square as visited
+    cells[x][y]=1;
+
+    // While there is more valid steps to take, recursive!
+    // If not, exit the function. 
+    let nextCell = getValidNextCell(x,y);
+    while (nextCell) {
+        joinCells(x,y,nextCell[0],nextCell[1]);
+        recursiveBuildMaze(nextCell[0], nextCell[1]);
+        nextCell = getValidNextCell(x,y);
+    }
+
+}
+
+/*
+
+   While implementing the maze using a recursive function abusing
+   the call stack is "clean and simple", it is also easy to change
+   the code to use a custom LIFO stack implemented with a simple array.
+
+   The size of the call stack is not well defined in javascript;
+   different browser will have different sizes on different machines.
+
+*/
+
+function buildMaze() {
+    // Start in the top right corner.
+    // The start position can be on any valid square,
+    // and since every step after this is random, 
+    // there is no real reason to choose a random
+    // start square.
+    let stack = [ [0,0] ];
+
+    while (stack.length) {
+
+        let x = stack[ stack.length - 1 ][0];
+        let y = stack[ stack.length - 1 ][1];
+
+        // Mark this square as visited. This is used in getValidNextCells()
+        // to check for valid steps.
+        cells[x][y]=1;
+
+        let nextCell = getValidNextCell(x,y);
+        // If there is a valid step, push current position on to the stack,
+        // and move to the next step. If there are no valid steps, walk back
+        // to the previous step, and repeat.
+        if (nextCell) {
+            joinCells(x,y,nextCell[0],nextCell[1]);
+            stack.push(nextCell);
+        } else {
+            stack.pop();
+        }
+    }
+
+}
+
+setupBoard();
+//recursiveBuildMaze(0,0);
+buildMaze();
+
+        </script>
+    </body>
+</html>
